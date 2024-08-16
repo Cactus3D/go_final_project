@@ -1,12 +1,17 @@
 package sqlite
 
 import (
-	"cactus3d/go_final_project/internal/models"
 	"database/sql"
 	"log"
 	"os"
 
+	"cactus3d/go_final_project/internal/models"
+
 	_ "github.com/mattn/go-sqlite3"
+)
+
+const (
+	selectLimit = 50
 )
 
 type Storage struct {
@@ -57,7 +62,11 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) AddTask(task *models.Task) (int, error) {
+func (s *Storage) Close() error {
+	return s.db.Close()
+}
+
+func (s *Storage) CreateTask(task *models.Task) (int, error) {
 	query := "INSERT INTO scheduler (date, title, comment, repeat) VALUES (?, ?, ?, ?)"
 
 	res, err := s.db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat)
@@ -88,12 +97,12 @@ func (s *Storage) GetTaskById(id string) (*models.Task, error) {
 	return &task, nil
 }
 
-func (s *Storage) GetTasks(offset, limit int) ([]models.Task, error) {
-	query := "SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT ? OFFSET ?"
+func (s *Storage) GetTasks() ([]models.Task, error) {
+	query := "SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT ?"
 
 	tasks := []models.Task{}
 
-	rows, err := s.db.Query(query, limit, offset)
+	rows, err := s.db.Query(query, selectLimit)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return nil, err
@@ -109,17 +118,20 @@ func (s *Storage) GetTasks(offset, limit int) ([]models.Task, error) {
 		}
 
 		tasks = append(tasks, task)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return tasks, nil
 }
 
-func (s *Storage) GetTasksBySearch(search string, offset, limit int) ([]models.Task, error) {
-	query := "SELECT * FROM scheduler WHERE title LIKE ? OR comment LIKE ? ORDER BY date LIMIT ? OFFSET ?"
+func (s *Storage) GetTasksBySearch(search string) ([]models.Task, error) {
+	query := "SELECT * FROM scheduler WHERE title LIKE ? OR comment LIKE ? ORDER BY date LIMIT ?"
 
 	tasks := []models.Task{}
 
-	rows, err := s.db.Query(query, search, search, limit, offset)
+	rows, err := s.db.Query(query, search, search, selectLimit)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return nil, err
@@ -135,17 +147,20 @@ func (s *Storage) GetTasksBySearch(search string, offset, limit int) ([]models.T
 		}
 
 		tasks = append(tasks, task)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return tasks, nil
 }
 
-func (s *Storage) GetTasksByDate(date string, offset, limit int) ([]models.Task, error) {
-	query := "SELECT * FROM scheduler WHERE date = ? ORDER BY date LIMIT ? OFFSET ?"
+func (s *Storage) GetTasksByDate(date string) ([]models.Task, error) {
+	query := "SELECT * FROM scheduler WHERE date = ? ORDER BY date LIMIT ?"
 
 	tasks := []models.Task{}
 
-	rows, err := s.db.Query(query, date, limit, offset)
+	rows, err := s.db.Query(query, date, selectLimit)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return nil, err
@@ -161,6 +176,9 @@ func (s *Storage) GetTasksByDate(date string, offset, limit int) ([]models.Task,
 		}
 
 		tasks = append(tasks, task)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return tasks, nil

@@ -7,7 +7,7 @@ import (
 )
 
 type TaskProvider interface {
-	DoneTask(id string) error
+	Done(id string) error
 }
 
 type ErrorResponse struct {
@@ -30,7 +30,7 @@ func New(provider TaskProvider) http.HandlerFunc {
 			return
 		}
 
-		err := provider.DoneTask(id)
+		err := provider.Done(id)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})

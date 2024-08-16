@@ -1,6 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+
 	addtask "cactus3d/go_final_project/internal/http-server/handlers/add-task"
 	deletetask "cactus3d/go_final_project/internal/http-server/handlers/delete-task"
 	donetask "cactus3d/go_final_project/internal/http-server/handlers/done-task"
@@ -8,21 +14,16 @@ import (
 	gettasks "cactus3d/go_final_project/internal/http-server/handlers/get-tasks"
 	nextdate "cactus3d/go_final_project/internal/http-server/handlers/next-date"
 	updatetask "cactus3d/go_final_project/internal/http-server/handlers/update-task"
-	"cactus3d/go_final_project/internal/service/tasks"
-	"cactus3d/go_final_project/internal/storage/sqlite"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
+	tasks "cactus3d/go_final_project/internal/service/tasks"
+	sqlite "cactus3d/go_final_project/internal/storage/sqlite"
 
 	"github.com/go-chi/chi/v5"
 )
 
 const (
-	WebDir = "./web/"
-	DBFile = "./scheduler.db"
-	Port   = 7540
+	defaultWebDir = "./web/"
+	defaultDBFile = "./scheduler.db"
+	defaultPort   = 7540
 )
 
 func main() {
@@ -30,19 +31,25 @@ func main() {
 	dbFile := os.Getenv("TODO_DBFILE")
 
 	if dbFile == "" {
-		dbFile = DBFile
+		dbFile = defaultDBFile
 	}
 	store, err := sqlite.New(dbFile)
 	if err != nil {
 		log.Fatalf("error starting db: %v", err)
 		return
 	}
+	defer func() {
+		err = store.Close()
+		if err != nil {
+			log.Fatalf("DB failed to shutdown: %v\n", err)
+		}
+	}()
 
 	portStr := os.Getenv("TODO_PORT")
 	var port int
 
 	if portStr == "" {
-		port = Port
+		port = defaultPort
 	} else {
 		port, err = strconv.Atoi(portStr)
 		if err != nil {
@@ -51,11 +58,17 @@ func main() {
 		}
 	}
 
+	webDir := os.Getenv("TODO_WEB_DIR")
+
+	if webDir == "" {
+		webDir = defaultWebDir
+	}
+
 	taskService := tasks.New(store)
 
 	r := chi.NewRouter()
 
-	r.Handle("/*", http.FileServer(http.Dir(WebDir)))
+	r.Handle("/*", http.FileServer(http.Dir(webDir)))
 
 	r.MethodFunc(http.MethodGet, "/api/nextdate", nextdate.New())
 
@@ -69,9 +82,8 @@ func main() {
 	r.MethodFunc(http.MethodPost, "/api/task/done", donetask.New(taskService))
 
 	address := fmt.Sprintf(":%d", port)
-	if err := http.ListenAndServe(address, r); err != nil {
-		log.Fatalf("Server failed to start: %v\n", err)
+	if err := http.ListenAndServe(address, r); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Server failed with err: %v\n", err)
 		return
 	}
-
 }

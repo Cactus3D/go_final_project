@@ -1,14 +1,15 @@
 package addtask
 
 import (
-	"cactus3d/go_final_project/internal/utils"
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"cactus3d/go_final_project/internal/nextdate"
 )
 
 type TasksProvider interface {
-	AddTask(date, title, comment, repeat string) (int, error)
+	Add(date, title, comment, repeat string) (int, error)
 }
 
 type Request struct {
@@ -45,9 +46,9 @@ func New(provider TasksProvider) http.HandlerFunc {
 		}
 
 		if req.Date == "" {
-			req.Date = time.Now().Format("20060102")
+			req.Date = time.Now().Format(nextdate.DateFormat)
 		} else {
-			_, err = time.Parse("20060102", req.Date)
+			_, err = time.Parse(nextdate.DateFormat, req.Date)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(ErrorResponse{Error: "Неверный формат времени"})
@@ -56,7 +57,7 @@ func New(provider TasksProvider) http.HandlerFunc {
 		}
 
 		if req.Repeat != "" {
-			_, err = utils.NextDate(time.Now(), req.Date, req.Repeat)
+			_, err = nextdate.NextDate(time.Now(), req.Date, req.Repeat)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(ErrorResponse{Error: "Неверный формат повторений"})
@@ -64,7 +65,7 @@ func New(provider TasksProvider) http.HandlerFunc {
 			}
 		}
 
-		id, err := provider.AddTask(req.Date, req.Title, req.Comment, req.Repeat)
+		id, err := provider.Add(req.Date, req.Title, req.Comment, req.Repeat)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})

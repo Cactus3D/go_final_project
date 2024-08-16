@@ -1,16 +1,14 @@
 package updatetask
 
 import (
-	"cactus3d/go_final_project/internal/models"
-	"cactus3d/go_final_project/internal/utils"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"time"
+
+	"cactus3d/go_final_project/internal/models"
 )
 
 type TaskProvider interface {
-	UpdateTask(*models.Task) error
+	Update(*models.Task) error
 }
 
 type ErrorResponse struct {
@@ -29,44 +27,13 @@ func New(provider TaskProvider) http.HandlerFunc {
 			return
 		}
 
-		if req.Id == "" {
+		if ok, err := req.Validate(); !ok {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(ErrorResponse{Error: "Отсуетствует id"})
-			return
-		}
-		if id, err := strconv.Atoi(req.Id); err != nil || id < 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(ErrorResponse{Error: "id должен быть положительным числом"})
+			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 			return
 		}
 
-		if req.Title == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(ErrorResponse{Error: "Не указан заголовок задачи"})
-			return
-		}
-
-		if req.Date == "" {
-			req.Date = time.Now().Format("20060102")
-		} else {
-			_, err = time.Parse("20060102", req.Date)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(ErrorResponse{Error: "Неверный формат времени"})
-				return
-			}
-		}
-
-		if req.Repeat != "" {
-			_, err = utils.NextDate(time.Now(), req.Date, req.Repeat)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(ErrorResponse{Error: "Неверный формат повторений"})
-				return
-			}
-		}
-
-		err = provider.UpdateTask(&req)
+		err = provider.Update(&req)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})

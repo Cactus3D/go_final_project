@@ -1,14 +1,15 @@
 package gettask
 
 import (
-	"cactus3d/go_final_project/internal/models"
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"cactus3d/go_final_project/internal/models"
 )
 
 type TaskProvider interface {
-	GetTask(id string) (*models.Task, error)
+	Get(id string) (*models.Task, error)
 }
 
 type ErrorResponse struct {
@@ -31,14 +32,16 @@ func New(provider TaskProvider) http.HandlerFunc {
 			return
 		}
 
-		res, err := provider.GetTask(id)
+		res, err := provider.Get(id)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 			return
 		}
 		if res == nil {
-
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "Отсутвует task"})
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)

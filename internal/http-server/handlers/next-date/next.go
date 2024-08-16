@@ -1,9 +1,10 @@
 package nextdate
 
 import (
-	"cactus3d/go_final_project/internal/utils"
 	"net/http"
 	"time"
+
+	"cactus3d/go_final_project/internal/nextdate"
 )
 
 func New() http.HandlerFunc {
@@ -14,19 +15,19 @@ func New() http.HandlerFunc {
 		date := r.URL.Query().Get("date")
 		repeat := r.URL.Query().Get("repeat")
 
-		n, err := time.Parse("20060102", now)
+		n, err := time.Parse(nextdate.DateFormat, now)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		_, err = time.Parse("20060102", date)
+		_, err = time.Parse(nextdate.DateFormat, date)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		res, err := utils.NextDate(n, date, repeat)
+		res, err := nextdate.NextDate(n, date, repeat)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

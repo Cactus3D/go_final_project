@@ -1,14 +1,14 @@
 package gettasks
 
 import (
-	"cactus3d/go_final_project/internal/models"
 	"encoding/json"
 	"net/http"
-	"strconv"
+
+	"cactus3d/go_final_project/internal/models"
 )
 
 type TaskProvider interface {
-	GetTasks(search string, offset, limit int) ([]models.Task, error)
+	GetAll(search string) ([]models.Task, error)
 }
 
 type Response struct {
@@ -24,31 +24,11 @@ func New(provider TaskProvider) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		var offset, limit int
 		var err error
-
-		offs := r.URL.Query().Get("now")
-		if offs != "" {
-			offset, err = strconv.Atoi(offs)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
-				return
-			}
-		}
-		lims := r.URL.Query().Get("date")
-		if lims != "" {
-			limit, err = strconv.Atoi(lims)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
-				return
-			}
-		}
 
 		search := r.URL.Query().Get("search")
 
-		tasks, err := provider.GetTasks(search, offset, limit)
+		tasks, err := provider.GetAll(search)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
